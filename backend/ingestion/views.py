@@ -4,7 +4,7 @@ from rest_framework import status
 
 from accounts.models import Membership
 from .models import DataSource, IngestionBatch, RawRecord
-from review.models import ActivityRecord
+from review.models import ActivityRecord, ValidationIssue
 from .serializers import (
     IngestionBatchSerializer,
     UploadBatchSerializer,
@@ -136,3 +136,59 @@ class FailedRawRecordListView(APIView):
 
         serializer = RawRecordSerializer(failed_rows, many=True)
         return Response(serializer.data)
+class DashboardSummaryView(APIView):
+    def get(self, request):
+        membership = Membership.objects.filter(user=request.user).first()
+
+        if not membership:
+            return Response(
+                {"detail": "User is not linked to any organization."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        organization = membership.organization
+
+        total_batches = IngestionBatch.objects.filter(
+            organization=organization
+        ).count()
+
+        pending_records = ActivityRecord.objects.filter(
+            organization=organization,
+            review_status="PENDING",
+        ).count()
+
+        flagged_records = ActivityRecord.objects.filter(
+            organization=organization,
+            review_status="FLAGGED",
+        ).count()
+
+        approved_records = ActivityRecord.objects.filter(
+            organization=organization,
+            review_status="APPROVED",
+            is_locked=True,
+        ).count()
+
+        rejected_records = ActivityRecord.objects.filter(
+            organization=organization,
+            review_status="REJECTED",
+        ).count()
+
+        failed_rows = RawRecord.objects.filter(
+            batch__organization=organization,
+            parse_status="FAILED",
+        ).count()
+
+        total_issues = ValidationIssue.objects.filter(
+            raw_record__batch__organization=organization
+        ).count()
+
+        return Response({
+            "organization": organization.name,
+            "total_batches": total_batches,
+            "pending_records": pending_records,
+            "flagged_records": flagged_records,
+            "approved_locked_records": approved_records,
+            "rejected_records": rejected_records,
+            "failed_rows": failed_rows,
+            "total_issues": total_issues,
+        })

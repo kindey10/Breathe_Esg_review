@@ -5,9 +5,11 @@ from .views import (
     BatchListView,
     ActivityRecordListView,
     FailedRawRecordListView,
+    DashboardSummaryView,
 )
 
 urlpatterns = [
+    path("dashboard/", DashboardSummaryView.as_view(), name="dashboard-summary"),
     path("upload/", UploadBatchView.as_view(), name="upload-batch"),
     path("batches/", BatchListView.as_view(), name="batch-list"),
     path("records/", ActivityRecordListView.as_view(), name="activity-record-list"),
