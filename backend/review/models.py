@@ -38,7 +38,8 @@ class ActivityRecord(models.Model):
 
     activity_type = models.CharField(max_length=100)
 
-    activity_date = models.DateField()
+    activity_date_start = models.DateField()
+    activity_date_end = models.DateField(null=True, blank=True)
 
     original_quantity = models.FloatField(
         null=True,
@@ -61,6 +62,7 @@ class ActivityRecord(models.Model):
         blank=True,
         null=True
     )
+    source_details = models.JSONField(default=dict, blank=True)
 
     review_status = models.CharField(
         max_length=20,
@@ -147,6 +149,8 @@ class AuditEvent(models.Model):
     )
 
     note = models.TextField(blank=True, null=True)
+    before_state = models.JSONField(null=True, blank=True)
+    after_state = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
