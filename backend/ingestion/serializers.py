@@ -29,6 +29,7 @@ class UploadBatchSerializer(serializers.Serializer):
         choices=[
             ("SAP_FUEL", "SAP Fuel"),
             ("SAP_PROCUREMENT", "SAP Procurement"),
+            ("UTILITY_ELECTRICITY", "Utility Electricity"),
             ]
     )
     file = serializers.FileField()

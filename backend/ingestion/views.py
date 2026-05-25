@@ -11,7 +11,11 @@ from .serializers import (
     ActivityRecordSerializer,
     RawRecordSerializer,
 )
-from .parsers import parse_sap_fuel_batch, parse_sap_procurement_batch
+from .parsers import (
+    parse_sap_fuel_batch,
+    parse_sap_procurement_batch,
+    parse_utility_electricity_batch,
+)
 
 
 class UploadBatchView(APIView):
@@ -34,6 +38,8 @@ class UploadBatchView(APIView):
 
         if dataset_type in ["SAP_FUEL", "SAP_PROCUREMENT"]:
             source_type = "SAP"
+        elif dataset_type == "UTILITY_ELECTRICITY":
+            source_type = "UTILITY"    
         else:
             return Response(
                 {"detail": "Unsupported dataset type."},
@@ -65,6 +71,8 @@ class UploadBatchView(APIView):
             parse_sap_fuel_batch(batch)
         if dataset_type == "SAP_PROCUREMENT":
             parse_sap_procurement_batch(batch)
+        if dataset_type == "UTILITY_ELECTRICITY":
+            parse_utility_electricity_batch(batch)
 
         response_data = IngestionBatchSerializer(batch).data
         return Response(response_data, status=status.HTTP_201_CREATED)
