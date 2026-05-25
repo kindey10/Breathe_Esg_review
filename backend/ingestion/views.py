@@ -11,7 +11,7 @@ from .serializers import (
     ActivityRecordSerializer,
     RawRecordSerializer,
 )
-from .parsers import parse_sap_fuel_batch
+from .parsers import parse_sap_fuel_batch, parse_sap_procurement_batch
 
 
 class UploadBatchView(APIView):
@@ -32,7 +32,7 @@ class UploadBatchView(APIView):
         dataset_type = serializer.validated_data["dataset_type"]
         uploaded_file = serializer.validated_data["file"]
 
-        if dataset_type == "SAP_FUEL":
+        if dataset_type in ["SAP_FUEL", "SAP_PROCUREMENT"]:
             source_type = "SAP"
         else:
             return Response(
@@ -63,6 +63,8 @@ class UploadBatchView(APIView):
 
         if dataset_type == "SAP_FUEL":
             parse_sap_fuel_batch(batch)
+        if dataset_type == "SAP_PROCUREMENT":
+            parse_sap_procurement_batch(batch)
 
         response_data = IngestionBatchSerializer(batch).data
         return Response(response_data, status=status.HTTP_201_CREATED)

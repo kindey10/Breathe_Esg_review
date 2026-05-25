@@ -182,4 +182,143 @@ def parse_sap_fuel_batch(batch):
     batch.status = "COMPLETED"
     batch.save()
 
+def parse_sap_procurement_batch(batch):
+    valid_rows = 0
+    failed_rows = 0
+    flagged_rows = 0
+
+    file_path = batch.original_file.path
+
+    with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for index, row in enumerate(reader, start=2):
+            raw_record = RawRecord.objects.create(
+                batch=batch,
+                row_number=index,
+                raw_payload=row,
+                parse_status="VALID",
+            )
+
+            issues = []
+
+            plant_code = (row.get("plant_code") or "").strip()
+            posting_date = parse_date(row.get("posting_date"))
+            material_group = (row.get("material_group") or "").strip()
+            description = (row.get("description") or "").strip()
+            amount_raw = (row.get("net_amount") or "").strip()
+            currency = (row.get("currency") or "").strip()
+
+            facility = Facility.objects.filter(
+                organization=batch.organization,
+                facility_code=plant_code,
+            ).first()
+
+            if not posting_date:
+                issues.append(("ERROR", "INVALID_DATE", "Posting date is missing or invalid."))
+
+            if not amount_raw:
+                issues.append(("ERROR", "MISSING_AMOUNT", "Procurement amount is missing."))
+
+            if not currency:
+                issues.append(("ERROR", "MISSING_CURRENCY", "Currency is missing."))
+
+            try:
+                amount = float(amount_raw)
+            except ValueError:
+                amount = None
+                issues.append(("ERROR", "INVALID_AMOUNT", "Procurement amount is not numeric."))
+
+            if amount is not None and amount < 0:
+                issues.append(("ERROR", "NEGATIVE_AMOUNT", "Procurement amount cannot be negative."))
+
+            if plant_code and facility is None:
+                issues.append(("WARNING", "UNKNOWN_PLANT_CODE", "Plant code is not present in the facility lookup table."))
+
+            if not material_group:
+                issues.append(("WARNING", "MISSING_MATERIAL_GROUP", "Material group is missing, so procurement classification is uncertain."))
+
+            has_error = any(issue[0] == "ERROR" for issue in issues)
+            has_warning = any(issue[0] == "WARNING" for issue in issues)
+
+            if has_error:
+                raw_record.parse_status = "FAILED"
+                raw_record.failure_reason = "; ".join([issue[2] for issue in issues if issue[0] == "ERROR"])
+                raw_record.save()
+
+                for severity, code, message in issues:
+                    ValidationIssue.objects.create(
+                        raw_record=raw_record,
+                        severity=severity,
+                        issue_code=code,
+                        message=message,
+                    )
+
+                failed_rows += 1
+                continue
+
+            review_status = "FLAGGED" if has_warning else "PENDING"
+
+            activity = ActivityRecord.objects.create(
+                organization=batch.organization,
+                batch=batch,
+                raw_record=raw_record,
+                facility=facility,
+                source_type="SAP",
+                dataset_type="SAP_PROCUREMENT",
+                scope="SCOPE_3",
+                activity_type=description or "Purchased goods and services",
+                activity_date_start=posting_date,
+                original_quantity=amount,
+                original_unit=currency,
+                normalized_quantity=amount,
+                normalized_unit=currency,
+                review_status=review_status,
+                source_details={
+                    "company_code": row.get("company_code"),
+                    "plant_code": plant_code,
+                    "purchase_order": row.get("purchase_order"),
+                    "vendor_code": row.get("vendor_code"),
+                    "material_group": material_group,
+                    "scope_category": "Category 1 - Purchased Goods and Services",
+                },
+            )
+
+            AuditEvent.objects.create(
+                organization=batch.organization,
+                activity_record=activity,
+                actor=batch.uploaded_by,
+                action="CREATED",
+                note="Activity record created from SAP procurement upload.",
+                after_state={
+                    "amount": activity.normalized_quantity,
+                    "currency": activity.normalized_unit,
+                    "review_status": activity.review_status,
+                },
+            )
+
+            for severity, code, message in issues:
+                ValidationIssue.objects.create(
+                    raw_record=raw_record,
+                    activity_record=activity,
+                    severity=severity,
+                    issue_code=code,
+                    message=message,
+                )
+
+            raw_record.parse_status = "FLAGGED" if has_warning else "VALID"
+            raw_record.save()
+
+            if has_warning:
+                flagged_rows += 1
+            else:
+                valid_rows += 1
+
+    batch.valid_rows = valid_rows
+    batch.failed_rows = failed_rows
+    batch.flagged_rows = flagged_rows
+    batch.total_rows = valid_rows + failed_rows + flagged_rows
+    batch.status = "COMPLETED"
+    batch.save()
+
     return batch
