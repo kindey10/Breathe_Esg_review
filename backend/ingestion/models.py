@@ -41,7 +41,12 @@ class IngestionBatch(models.Model):
 
     original_file = models.FileField(upload_to='uploads/')
     original_filename = models.CharField(max_length=255)
-
+    uploaded_by = models.ForeignKey(
+    'auth.User',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     status = models.CharField(
