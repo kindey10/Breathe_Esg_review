@@ -1,0 +1,35 @@
+{
+  "trips": [
+    {
+      "trip_id": "TRIP-001",
+      "type": "AIR",
+      "start_city_code": "DEL",
+      "end_city_code": "BOM",
+      "start_date": "2026-02-12T06:30:00",
+      "class_of_service": "ECONOMY"
+    },
+    {
+      "trip_id": "TRIP-002",
+      "type": "HOTEL",
+      "city": "Mumbai",
+      "start_date": "2026-02-12",
+      "end_date": "2026-02-14",
+      "num_rooms": 1
+    },
+    {
+      "trip_id": "TRIP-003",
+      "type": "GROUND",
+      "transport_mode": "TAXI",
+      "distance_value": 22,
+      "distance_unit": "km"
+    },
+    {
+      "trip_id": "TRIP-004",
+      "type": "AIR",
+      "start_city_code": "XXX",
+      "end_city_code": "BOM",
+      "start_date": "2026-02-15T10:00:00",
+      "class_of_service": "BUSINESS"
+    }
+  ]
+}

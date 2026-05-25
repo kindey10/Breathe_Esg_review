@@ -15,6 +15,7 @@ from .parsers import (
     parse_sap_fuel_batch,
     parse_sap_procurement_batch,
     parse_utility_electricity_batch,
+    parse_travel_batch,
 )
 
 
@@ -40,6 +41,8 @@ class UploadBatchView(APIView):
             source_type = "SAP"
         elif dataset_type == "UTILITY_ELECTRICITY":
             source_type = "UTILITY"    
+        elif dataset_type == "TRAVEL":
+            source_type = "TRAVEL"
         else:
             return Response(
                 {"detail": "Unsupported dataset type."},
@@ -73,6 +76,8 @@ class UploadBatchView(APIView):
             parse_sap_procurement_batch(batch)
         if dataset_type == "UTILITY_ELECTRICITY":
             parse_utility_electricity_batch(batch)
+        if dataset_type == "TRAVEL":
+            parse_travel_batch(batch)
 
         response_data = IngestionBatchSerializer(batch).data
         return Response(response_data, status=status.HTTP_201_CREATED)

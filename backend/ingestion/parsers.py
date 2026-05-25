@@ -1,3 +1,4 @@
+import json
 import csv
 from datetime import datetime
 
@@ -477,6 +478,195 @@ def parse_utility_electricity_batch(batch):
                 flagged_rows += 1
             else:
                 valid_rows += 1
+
+    batch.valid_rows = valid_rows
+    batch.failed_rows = failed_rows
+    batch.flagged_rows = flagged_rows
+    batch.total_rows = valid_rows + failed_rows + flagged_rows
+    batch.status = "COMPLETED"
+    batch.save()
+def parse_travel_batch(batch):
+    valid_rows = 0
+    failed_rows = 0
+    flagged_rows = 0
+
+    airport_distances = {
+        ("DEL", "BOM"): 1138,
+        ("BOM", "DEL"): 1138,
+        ("DEL", "BLR"): 1700,
+        ("BLR", "DEL"): 1700,
+    }
+
+    file_path = batch.original_file.path
+
+    with open(file_path, encoding="utf-8") as jsonfile:
+        data = json.load(jsonfile)
+
+    trips = data.get("trips", [])
+
+    for index, trip in enumerate(trips, start=1):
+        raw_record = RawRecord.objects.create(
+            batch=batch,
+            row_number=index,
+            raw_payload=trip,
+            parse_status="VALID",
+        )
+
+        issues = []
+        travel_type = (trip.get("type") or "").strip().upper()
+
+        activity_type = "Business travel"
+        normalized_quantity = None
+        normalized_unit = None
+        start_date = None
+        end_date = None
+
+        if travel_type == "AIR":
+            origin = (trip.get("start_city_code") or "").strip().upper()
+            destination = (trip.get("end_city_code") or "").strip().upper()
+            start_date = parse_date((trip.get("start_date") or "")[:10])
+
+            if not origin or not destination:
+                issues.append(("ERROR", "MISSING_AIRPORT_CODE", "Origin or destination airport code is missing."))
+
+            distance = airport_distances.get((origin, destination))
+
+            if distance is None:
+                issues.append(("WARNING", "UNKNOWN_AIRPORT_ROUTE", "Airport route is not in the prototype distance lookup."))
+
+            if not start_date:
+                issues.append(("ERROR", "INVALID_TRAVEL_DATE", "Flight date is missing or invalid."))
+
+            activity_type = f"Flight {origin} to {destination}"
+            normalized_quantity = distance
+            normalized_unit = "km"
+
+        elif travel_type == "HOTEL":
+            city = trip.get("city")
+            start_date = parse_date(trip.get("start_date"))
+            end_date = parse_date(trip.get("end_date"))
+            rooms = trip.get("num_rooms")
+
+            if not start_date or not end_date:
+                issues.append(("ERROR", "INVALID_HOTEL_DATES", "Hotel dates are missing or invalid."))
+
+            if start_date and end_date and end_date <= start_date:
+                issues.append(("ERROR", "INVALID_HOTEL_DATE_ORDER", "Hotel checkout must be after check-in."))
+
+            try:
+                rooms = int(rooms)
+            except (TypeError, ValueError):
+                rooms = None
+                issues.append(("WARNING", "MISSING_ROOM_COUNT", "Room count is missing or invalid."))
+
+            if start_date and end_date and rooms:
+                nights = (end_date - start_date).days
+                normalized_quantity = nights * rooms
+                normalized_unit = "room_nights"
+
+            activity_type = f"Hotel stay - {city or 'Unknown city'}"
+
+        elif travel_type == "GROUND":
+            mode = trip.get("transport_mode") or "GROUND"
+            distance_raw = trip.get("distance_value")
+            distance_unit = (trip.get("distance_unit") or "").strip().lower()
+
+            try:
+                distance = float(distance_raw)
+            except (TypeError, ValueError):
+                distance = None
+                issues.append(("WARNING", "MISSING_GROUND_DISTANCE", "Ground transport distance is missing or invalid."))
+
+            if distance is not None:
+                if distance_unit == "km":
+                    normalized_quantity = distance
+                    normalized_unit = "km"
+                elif distance_unit in ["mile", "miles", "mi"]:
+                    normalized_quantity = distance * 1.60934
+                    normalized_unit = "km"
+                else:
+                    issues.append(("ERROR", "UNSUPPORTED_DISTANCE_UNIT", "Ground transport distance unit is unsupported."))
+
+            start_date = parse_date(trip.get("start_date")) or parse_date("2026-02-12")
+            activity_type = f"Ground transport - {mode}"
+
+        else:
+            issues.append(("ERROR", "UNSUPPORTED_TRAVEL_TYPE", "Travel type is not supported."))
+
+        has_error = any(issue[0] == "ERROR" for issue in issues)
+        has_warning = any(issue[0] == "WARNING" for issue in issues)
+
+        if has_error:
+            raw_record.parse_status = "FAILED"
+            raw_record.failure_reason = "; ".join([issue[2] for issue in issues if issue[0] == "ERROR"])
+            raw_record.save()
+
+            for severity, code, message in issues:
+                ValidationIssue.objects.create(
+                    raw_record=raw_record,
+                    severity=severity,
+                    issue_code=code,
+                    message=message,
+                )
+
+            failed_rows += 1
+            continue
+
+        review_status = "FLAGGED" if has_warning else "PENDING"
+
+        activity = ActivityRecord.objects.create(
+            organization=batch.organization,
+            batch=batch,
+            raw_record=raw_record,
+            facility=None,
+            source_type="TRAVEL",
+            dataset_type="TRAVEL",
+            scope="SCOPE_3",
+            activity_type=activity_type,
+            activity_date_start=start_date,
+            activity_date_end=end_date,
+            original_quantity=normalized_quantity,
+            original_unit=normalized_unit,
+            normalized_quantity=round(normalized_quantity, 3) if normalized_quantity is not None else None,
+            normalized_unit=normalized_unit,
+            review_status=review_status,
+            source_details={
+                "trip_id": trip.get("trip_id"),
+                "travel_type": travel_type,
+                "scope_category": "Category 6 - Business Travel",
+                "raw_trip": trip,
+            },
+        )
+
+        AuditEvent.objects.create(
+            organization=batch.organization,
+            activity_record=activity,
+            actor=batch.uploaded_by,
+            action="CREATED",
+            note="Activity record created from corporate travel upload.",
+            after_state={
+                "normalized_quantity": activity.normalized_quantity,
+                "normalized_unit": activity.normalized_unit,
+                "review_status": activity.review_status,
+            },
+        )
+
+        for severity, code, message in issues:
+            ValidationIssue.objects.create(
+                raw_record=raw_record,
+                activity_record=activity,
+                severity=severity,
+                issue_code=code,
+                message=message,
+            )
+
+        raw_record.parse_status = "FLAGGED" if has_warning else "VALID"
+        raw_record.save()
+
+        if has_warning:
+            flagged_rows += 1
+        else:
+            valid_rows += 1
 
     batch.valid_rows = valid_rows
     batch.failed_rows = failed_rows
