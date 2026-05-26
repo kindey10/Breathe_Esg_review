@@ -35,7 +35,7 @@ The application is intentionally designed like an internal enterprise operations
 
 # Key Features
 
-## Multi-source ESG data ingestion
+## Multi-source ESG Data Ingestion
 
 Supports CSV uploads from:
 
@@ -260,6 +260,25 @@ http://localhost:5173
 Username: kindey
 Password: Demo@12345
 ```
+
+---
+
+# Additional Documentation
+
+Detailed design and architecture decisions are documented in:
+
+- MODEL.md
+- DECISIONS.md
+- TRADEOFFS.md
+- SOURCES.md
+
+These documents explain:
+- data modeling choices
+- ingestion assumptions
+- source research
+- validation strategy
+- intentional tradeoffs
+- scalability considerations
 
 ---
 
