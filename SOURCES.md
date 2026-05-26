@@ -1,141 +1,155 @@
 # SOURCES.md
 
-# Goal
+# How the fabricated data was designed
 
-This document explains what real-world source formats were researched and how they influenced the prototype design.
+I didn’t want the sample datasets to feel random.
 
----
+Before creating the ingestion files, I spent time looking at how enterprise exports from:
+- SAP systems
+- utility portals
+- travel platforms
 
-# 1. SAP Fuel & Procurement Data
+usually behave — especially where they tend to become messy.
 
-## Research
+The goal wasn’t to perfectly recreate production systems.
 
-I researched:
-- SAP flat-file exports
-- SAP procurement CSV exports
-- enterprise ERP export patterns
+The goal was to recreate the kinds of ingestion problems ESG analyst teams actually deal with.
 
-Common characteristics:
+<br>
+
+# SAP activity exports
+
+## What I researched
+
+I looked into:
+- ERP export structures
+- procurement CSV patterns
+- fuel activity exports
+- operational flat-file workflows
+
+Common patterns:
 - inconsistent units
-- internal plant codes
-- procurement categories
-- non-user-friendly column naming
-- mixed formatting quality
+- internal naming conventions
+- vendor metadata gaps
+- mixed procurement categories
 
----
+<br>
 
-## What I Modeled
+## What I modeled
 
-I modeled:
-- flat CSV exports
-- fuel quantities
-- procurement rows
+The prototype includes:
+- fuel activity rows
+- procurement records
+- unusual quantities
 - inconsistent units
-- suspicious procurement values
-- facility references
+- suspicious operational values
 
----
+Examples:
+- massive procurement quantities
+- missing vendor names
+- mixed fuel units
 
-## What Would Break in Production
+<br>
 
-Real SAP deployments would also require:
-- mapping tables
-- master data reconciliation
+## What would break in production
+
+Real SAP ingestion would also require:
+- master-data mapping
 - vendor normalization
-- asynchronous ingestion
 - duplicate detection
-- extremely large files
+- asynchronous processing
+- massive file handling
+- schema reconciliation
 
----
+<br>
 
-# 2. Utility Electricity Data
+# Utility electricity exports
 
-## Research
+## What I researched
 
-I researched:
+I looked into:
 - utility portal exports
-- electricity billing CSV structures
-- facility electricity reporting
+- electricity billing structures
+- facilities reporting formats
 
-Common characteristics:
-- billing periods
-- kWh/MWh inconsistencies
+Common patterns:
+- billing-period inconsistencies
+- mixed energy units
 - facility-level aggregation
-- non-calendar reporting periods
+- incomplete metadata
 
----
+<br>
 
-## What I Modeled
+## What I modeled
 
-I modeled:
-- electricity CSV uploads
-- usage normalization
-- billing periods
-- inconsistent units
-- missing facility metadata
+The prototype includes:
+- electricity CSV exports
+- kWh normalization
+- MWh conversion
+- missing facility names
+- suspicious usage quantities
 
----
+<br>
 
-## What Would Break in Production
+## Production challenges
 
-Production utility ingestion would likely require:
+Real utility ingestion would likely require:
 - PDF parsing
-- OCR handling
-- utility-specific schemas
+- OCR
+- interval meter support
 - timezone handling
-- demand charge parsing
-- interval meter data
+- utility-specific schemas
 
----
+<br>
 
-# 3. Corporate Travel Data
+# Travel activity exports
 
-## Research
+## What I researched
 
-I researched:
+I looked into:
 - Concur exports
-- Navan travel exports
-- travel expense reporting formats
+- Navan-style reports
+- travel expense exports
 
-Common characteristics:
-- multiple transport categories
+Common patterns:
+- inconsistent transport categories
 - incomplete distances
+- vendor naming inconsistencies
 - airport/location codes
-- inconsistent vendor naming
 
----
+<br>
 
-## What I Modeled
+## What I modeled
 
-I modeled:
+The prototype includes:
 - flights
-- hotels
-- ground transport
-- inconsistent distances
-- suspicious travel values
+- train travel
+- taxi travel
+- missing travel metadata
+- suspicious travel distances
 
----
+<br>
 
-## What Would Break in Production
+## Production challenges
 
-Production travel ingestion would likely require:
-- airport code mapping
+Real travel ingestion would likely require:
+- airport mapping
 - geolocation enrichment
-- emissions-factor mapping
-- duplicate itinerary handling
-- traveler reconciliation
+- itinerary reconciliation
+- duplicate trip detection
+- emissions factor linkage
 
----
+<br>
 
-# Why I Fabricated Sample Data
+# Why the sample data intentionally contains errors
 
-The assignment explicitly required creating realistic fabricated data after researching source shapes.
+Perfect datasets are unrealistic.
 
-I intentionally designed sample datasets with:
-- realistic formatting inconsistencies
+So I intentionally fabricated:
 - invalid rows
-- suspicious quantities
-- mixed units
-- missing fields
+- inconsistent units
+- suspicious values
+- missing metadata
+- operational anomalies
 
-because enterprise ESG ingestion data is rarely perfectly clean.
+because ESG ingestion workflows are usually messy before they become audit-ready.

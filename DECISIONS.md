@@ -1,145 +1,148 @@
 # DECISIONS.md
 
-# Goal
+# Why these implementation choices were made
 
-This document explains major ambiguities and implementation decisions made during the assignment.
+This project intentionally prioritizes:
+- ingestion realism
+- operational review
+- audit-style workflows
 
----
+over:
+- polished analytics
+- complex visualization
+- heavy authentication flows
 
-# Why I Chose CSV Uploads
+<br>
 
-I chose CSV uploads for all three source types because:
-- enterprise teams commonly export CSVs
-- CSVs are easy for analysts to validate manually
-- they simulate realistic onboarding workflows
-- they are fast to prototype within assignment constraints
+# Why I used CSV uploads everywhere
 
-I intentionally did not build live API ingestion because the assignment emphasized workflow quality over integration complexity.
+CSV exports are still extremely common inside enterprise operational workflows.
 
----
+I chose CSV ingestion because:
+- SAP exports are commonly shared as flat files
+- facilities teams export CSVs from utility portals
+- travel platforms often provide spreadsheet exports
+- CSVs are easy for analysts to manually validate
 
-# SAP Handling Decision
+I intentionally avoided live API integrations because the assignment focused more on workflow quality than integration complexity.
 
-SAP systems are extremely large and inconsistent.
+<br>
 
-I chose to simulate:
-- flat-file SAP exports
-- inconsistent units
-- plant/facility codes
-- procurement activity rows
+# Why SAP data was simplified
 
-instead of implementing:
+Real SAP ecosystems are massive.
+
+Instead of implementing:
+- IDocs
 - OData services
 - BAPI integrations
-- IDoc parsing
 
-This kept the scope realistic for a prototype while still representing SAP complexity.
+I focused on simulating:
+- operational flat-file exports
+- inconsistent units
+- procurement activity
+- facility-linked activity rows
 
----
+This kept the prototype realistic while staying manageable within assignment scope.
 
-# Utility Data Decision
+<br>
 
-I chose utility portal CSV exports instead of PDF parsing.
+# Why suspicious detection exists
 
-Reason:
-- facilities teams commonly export CSVs from utility portals
-- PDF parsing would add OCR complexity without improving ingestion workflow evaluation
-- the assignment focused more on normalization and analyst review
+While reading the assignment, one thing stood out clearly:
 
-I still modeled:
-- billing periods
-- electricity units
-- inconsistent consumption formats
+the workflow was supposed to include analyst review.
 
----
-
-# Travel Data Decision
-
-I modeled travel exports similar to Concur/Navan CSV exports.
-
-I included:
-- flights
-- hotels
-- ground transport
-- missing distances
-- inconsistent categories
-
-This allowed the workflow to simulate different travel emission categories.
-
----
-
-# Why I Added Suspicious Detection
-
-The assignment specifically mentioned:
-- suspicious rows
-- analyst review
-- audit signoff
-
-Because of this, I intentionally added:
-- outlier quantity detection
+Because of that, I intentionally added:
+- outlier detection
+- suspicious procurement quantities
 - missing metadata checks
-- suspicious procurement values
+- unusual operational values
 
 instead of simply validating required fields.
 
----
+<br>
 
-# Why Failed Rows Are Separate
+# Why failed rows are separated
 
-I separated:
-- failed ingestion rows
+I intentionally separated:
+- ingestion failures
 from:
-- reviewable activity records
+- reviewable operational records
 
-because enterprise ingestion systems usually distinguish:
-- parsing failures
-- analyst-reviewable operational data
+because enterprise systems usually treat these as completely different operational problems.
 
-Invalid rows should not pollute analyst review queues.
+An invalid ingestion row should not pollute analyst review workflows.
 
----
+<br>
 
-# Why I Did Not Add Full Authentication
+# Why I kept authentication lightweight
 
-The assignment did not focus on authentication flows.
+The assignment felt more focused on:
+- ingestion modeling
+- review workflow
+- operational architecture
 
-I used:
-- lightweight demo login behavior
-- organization membership fallback
+than on authentication UX.
 
-to reduce friction for reviewers and keep focus on ingestion workflow quality.
+So I intentionally used:
+- demo organization membership
+- lightweight access flow
 
----
+to reduce reviewer friction.
 
-# Why I Chose React + Django REST
+<br>
 
-Django REST Framework works well for:
-- structured operational APIs
-- relational data models
-- ingestion workflows
+# Why I chose Django REST Framework
 
-React works well for:
-- analyst dashboards
-- operational UIs
-- fast review interactions
+Django REST Framework works extremely well for:
+- relational operational workflows
+- ingestion pipelines
+- structured APIs
+- review systems
 
----
+The assignment naturally mapped well to:
+- models
+- serializers
+- validation layers
+- operational endpoints
 
-# Why I Used SQLite
+<br>
 
-SQLite reduced setup complexity and made deployment easier for an assignment prototype.
+# Why React + Vite
 
-In production I would move to PostgreSQL.
+The frontend needed to feel like:
+- an operational review console
+- not a marketing website
 
----
+React made it easy to structure:
+- dashboard state
+- review tables
+- ingestion flows
+- status updates
 
-# Questions I Would Ask a PM
+Vite kept frontend iteration lightweight and fast.
 
-If this were a real product discussion, I would ask:
-- how large are expected ingestion volumes?
-- should ingestion be async?
+<br>
+
+# Why SQLite was enough here
+
+For an assignment prototype:
+- SQLite reduced setup friction
+- deployment stayed simple
+- reviewers can run locally easily
+
+If this became production software, I would move to PostgreSQL immediately.
+
+<br>
+
+# Questions I would ask in a real product discussion
+
+If this were a real ESG ingestion platform discussion, I would ask:
+- how large are ingestion volumes?
+- should uploads process asynchronously?
+- should analysts approve in bulk?
+- how long are source files retained?
+- should rejected rows support reprocessing?
 - how strict should audit locking be?
-- should analysts be allowed bulk approvals?
-- how are emission factors managed?
-- should failed rows support reprocessing?
-- what retention policy exists for uploaded source files?
+- how are emissions factors versioned?

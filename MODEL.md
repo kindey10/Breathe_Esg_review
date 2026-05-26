@@ -1,36 +1,40 @@
 # MODEL.md
 
-## Goal
+# What I optimized the data model for
 
-The system ingests ESG-related source data from multiple enterprise systems, normalizes it into a standardized structure and allows analysts to review records before they become audit-ready.
+I wanted the backend structure to feel closer to a real internal ESG operations system than a generic CRUD app.
 
----
-
-# Core Design Philosophy
-
-I designed the data model around the ingestion workflow rather than around UI screens.
-
-The focus was:
+So the models are organized around:
+- ingestion batches
 - traceability
-- normalization
 - reviewability
-- audit readiness
+- audit flow
+- normalization
 
-The app separates:
-- raw uploaded source rows
-- normalized activity records
-- failed ingestion rows
-- analyst review decisions
+rather than around frontend pages.
 
-This mirrors how enterprise ESG pipelines are usually structured.
+<br>
 
----
+# Core idea
 
-# Main Models
+The system intentionally separates:
+
+| Layer | Responsibility |
+|:--|:--|
+| Raw uploaded files | Source-of-truth operational input |
+| Failed ingestion rows | Parsing/validation failures |
+| Standardized activity records | Operational ESG review layer |
+| Analyst review state | Audit workflow layer |
+
+This separation mirrors how enterprise ingestion pipelines are usually structured.
+
+<br>
+
+# Main models
 
 ## Organization
 
-Represents a client company.
+Represents a client/company using the system.
 
 Used for:
 - multi-tenancy
@@ -38,150 +42,168 @@ Used for:
 - future scalability
 
 Example:
-- Acme Manufacturing India Pvt Ltd
+```text
+Acme Manufacturing India Pvt Ltd
+```
 
----
+<br>
 
 ## Membership
 
 Links users to organizations.
 
-This allows:
-- organization-scoped access
-- future role expansion
-- analyst separation
+I added this because ESG workflows are usually organization-scoped rather than user-scoped.
 
----
+This creates a foundation for:
+- analyst roles
+- reviewer permissions
+- organization isolation
+
+<br>
 
 ## DataSource
 
-Represents the origin of uploaded ESG data.
+Represents where uploaded data came from.
 
 Examples:
 - SAP export
-- Utility portal CSV
-- Travel platform export
+- utility portal export
+- travel platform export
 
-I separated this from ingestion batches so multiple uploads can belong to the same source system.
+I intentionally separated source systems from ingestion batches because multiple uploads can belong to the same operational system.
 
----
+<br>
 
 ## IngestionBatch
 
-Represents a single uploaded file.
+Represents one uploaded file.
 
 Tracks:
 - upload timestamp
-- dataset type
-- upload status
-- source file
-- failed rows
-- flagged rows
+- source type
+- ingestion status
+- failed row count
+- flagged row count
+- upload metadata
 
-This acts as the source-of-truth container for uploaded data.
+This acts as the operational container for ingestion tracking.
 
----
+<br>
 
 ## ActivityRecord
 
-Represents normalized ESG activity data after parsing and validation.
+This is the core operational model.
+
+Represents normalized ESG activity after:
+- parsing
+- validation
+- unit normalization
 
 Examples:
-- diesel fuel consumption
-- electricity usage
-- travel distance
+- fuel usage
+- electricity consumption
+- travel activity
 
-This model stores:
-- normalized quantity
+The model stores:
+- standardized quantities
 - normalized units
 - activity category
-- issue flags
 - review status
+- issue flags
 - audit lock state
 
-This is the central operational model in the system.
-
----
+<br>
 
 ## FailedRow
 
-Represents ingestion rows that failed validation before normalization.
+Represents ingestion rows that failed before operational review.
 
 Examples:
 - invalid units
-- missing quantity
-- malformed dates
+- malformed numeric values
+- missing required fields
 - unsupported formats
 
-I intentionally separated failed rows from reviewable records because failed ingestion data should not enter the analyst workflow.
+I intentionally separated failed rows from analyst review because invalid ingestion rows should not enter operational workflows.
 
----
+<br>
 
-# Multi-tenancy
+# Multi-tenancy approach
 
-The system supports multi-tenancy through:
-- Organization model
-- Membership model
+The prototype supports organization-scoped data using:
+- Organization
+- Membership
 - organization-linked records
 
-This ensures data isolation between enterprise clients.
+This creates clean separation between enterprise clients.
 
----
+<br>
 
-# Source-of-truth Tracking
+# Traceability philosophy
 
-Every activity record can be traced back to:
+One thing I wanted to preserve throughout the workflow:
+
+every operational record should be traceable back to its source.
+
+So every activity record can be connected back to:
+- upload batch
 - source system
-- ingestion batch
 - upload timestamp
-- original uploaded file
+- original source file
 
-This is important for auditability and enterprise ESG workflows.
+This becomes extremely important in audit workflows.
 
----
+<br>
 
-# Unit Normalization
+# Unit normalization
 
-The system standardizes inconsistent units into normalized operational units.
+Operational ESG data often arrives with inconsistent units.
 
 Examples:
-- MWh → kWh
-- gallons → liters
+- gallons
+- liters
+- MWh
+- kWh
 
-This allows downstream review and future emissions calculations to operate consistently.
+I normalized quantities into standard operational units so downstream workflows can operate consistently.
 
----
+<br>
 
-# Audit Workflow
+# Review workflow design
 
 Records move through:
 - APPROVED
 - FLAGGED
 - REJECTED
 
-Approved records are locked to simulate audit-ready workflows.
+Approved rows become locked to simulate audit-ready records.
 
----
+Flagged rows intentionally require analyst review before signoff.
 
-# Why I Did Not Store Raw JSON Everywhere
+<br>
 
-A raw JSON-only structure would have been faster initially but harder to:
-- validate
-- review
-- filter
-- audit
-- normalize consistently
+# Why I avoided a raw JSON-only approach
 
-I chose structured normalized models because analyst workflows were central to the assignment.
+A JSON-heavy structure would have been faster initially.
 
----
+But it becomes harder to:
+- validate consistently
+- review operationally
+- normalize cleanly
+- filter reliably
+- audit later
 
-# Scalability Considerations
+I chose structured normalized models because the assignment focused heavily on operational review workflows.
 
-The current prototype uses SQLite for simplicity.
+<br>
 
-In production I would likely:
-- move to PostgreSQL
-- add async ingestion workers
-- add event-driven processing
-- add object storage for uploaded files
+# If this became production software
+
+I would likely add:
+- PostgreSQL
+- async ingestion queues
+- object storage
+- event-driven processing
+- schema versioning
+- duplicate detection
+- reviewer audit history

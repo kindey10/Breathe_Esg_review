@@ -1,75 +1,124 @@
 # TRADEOFFS.md
 
-# Goal
+# What I intentionally did NOT build
 
-This document explains intentional tradeoffs and features that were deliberately not built.
+Every useful prototype leaves something out intentionally.
 
----
+This document explains the shortcuts I consciously took, what I optimized for during the assignment, and what I would change if the system evolved into a production platform.
 
-# 1. No Real SAP/API Integrations
+<br>
+
+# No live SAP/API integrations
 
 I intentionally did not build:
-- live SAP integrations
-- Concur APIs
+- SAP APIs
 - utility APIs
+- travel platform integrations
 
 Reason:
-- integration setup complexity was too large for assignment scope
-- the assignment emphasized ingestion modeling and review workflow quality
-- realistic CSV exports still demonstrate ingestion handling
-
----
-
-# 2. No Emissions Calculation Engine
-
-The prototype normalizes activity data but does not calculate carbon emissions.
-
-Reason:
-- the assignment focused more on ingestion and analyst review
-- emission factor modeling introduces another major domain layer
-- ingestion quality is upstream of emissions computation
-
-I prioritized:
-- validation
+the assignment seemed more focused on:
+- ingestion workflows
 - normalization
-- audit workflow
+- operational review
+- suspicious detection
 
-instead of carbon math.
+rather than on integration infrastructure.
 
----
+CSV exports still simulate real ingestion challenges surprisingly well.
 
-# 3. No Full Authentication/Permissions System
+<br>
 
-I intentionally kept authentication lightweight.
+# No emissions calculation engine
+
+The prototype normalizes operational ESG data but does not calculate carbon emissions.
+
+I intentionally prioritized:
+- ingestion quality
+- validation
+- reviewability
+- audit flow
+
+because emissions calculations depend heavily on:
+- factor libraries
+- methodologies
+- geography
+- reporting standards
+
+That becomes an entirely separate domain layer.
+
+<br>
+
+# No heavy authentication system
+
+I intentionally avoided:
+- OAuth
+- RBAC dashboards
+- invitation flows
+- enterprise auth layers
 
 Reason:
-- reviewers should immediately access the workflow
-- enterprise RBAC systems are large in scope
-- assignment grading focused more on workflow modeling
+the assignment seemed more interested in:
+- operational workflow thinking
+- ingestion modeling
+- review logic
 
 I still modeled:
 - organizations
 - memberships
-- multi-tenancy structure
+- tenant separation
 
-to show future scalability.
+so the architecture can scale later.
 
----
+<br>
 
-# Additional Smaller Tradeoffs
+# No async ingestion workers
 
-I also intentionally did not build:
-- mobile responsiveness
-- advanced analytics dashboards
-- PDF ingestion
-- OCR pipelines
-- async processing queues
+Uploads process synchronously right now.
+
+For assignment-scale datasets, this keeps the system:
+- simpler
+- easier to understand
+- easier to deploy
+
+In production, ingestion would likely move to:
+- Celery workers
+- background queues
+- event-driven processing
+
+<br>
+
+# No mobile-first UI
+
+The interface is intentionally optimized for:
+- laptops
+- desktop analyst workflows
+
+I treated this more like:
+```text
+internal operational software
+```
+
+than:
+```text
+consumer mobile product
+```
+
+<br>
+
+# Smaller things I intentionally deprioritized
+
+I also intentionally skipped:
+- PDF parsing
+- OCR
+- advanced charts
 - reviewer comments
 - bulk approval actions
 - file versioning
+- audit timelines
+- emissions dashboards
 
-These were intentionally deprioritized in favor of:
+I prioritized:
 - stable ingestion flow
-- realistic normalization
-- review workflow clarity
+- realistic validation
+- operational review clarity
 - deployment quality

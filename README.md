@@ -1,216 +1,197 @@
-# Breathe ESG Review Workflow
+# BreatheESG — From messy CSVs to audit-ready ESG records
 
-A lightweight enterprise-style ESG data ingestion and review workflow prototype inspired by real sustainability reporting systems.
+Most ESG dashboards look clean.
 
-Built as part of the Breathe ESG assignment.
+The data behind them usually isn't.
 
----
+This project focuses on the messy middle layer:
+taking raw operational exports from systems like SAP, utility portals and travel platforms, standardizing them into reviewable ESG activity records, and building an analyst workflow before the data becomes audit evidence.
 
-# Live Demo
+Instead of treating ingestion as a simple upload problem, I treated it as an operational review problem.
 
-Frontend:
-https://breathe-esg-review.vercel.app
+<br>
 
-Backend API:
-https://breathe-esg-review-6gh7.onrender.com/api/ingestion/dashboard/
+## 🌍 Live Demo
 
----
+| Service | Link |
+|:--|:--|
+| Frontend | https://breathe-esg-review.vercel.app |
+| Backend API | https://breathe-esg-review-6gh7.onrender.com/api/ingestion/dashboard/ |
 
-# Project Overview
+<br>
 
-This project simulates how enterprise ESG platforms ingest, standardize, validate, review and approve sustainability activity data before it becomes audit-ready evidence.
+# What this prototype tries to solve
+
+Enterprise ESG reporting usually starts with:
+- inconsistent exports
+- missing metadata
+- broken units
+- suspicious operational values
+- fragmented source systems
+
+This prototype simulates that ingestion layer before ESG data becomes audit-ready.
 
 The workflow focuses on:
+- ingestion traceability
+- standardization
+- validation
+- suspicious row detection
+- analyst review
+- audit-style approval flow
 
-- ESG source data ingestion
-- Unit normalization
-- Validation and anomaly detection
-- Analyst review workflow
-- Failed row separation
-- Audit-style review pipeline
+<br>
 
-The application is intentionally designed like an internal enterprise operations console rather than a generic student CRUD dashboard.
+# What the system actually does
 
----
+| Capability | Description |
+|:--|:--|
+| Multi-source ingestion | Upload ESG CSV exports from different operational systems |
+| Standardization | Normalize inconsistent units into comparable activity data |
+| Validation | Detect missing fields, invalid units and suspicious values |
+| Review workflow | Route suspicious records to analyst review |
+| Failed ingestion queue | Separate invalid rows from operational review |
+| Audit-style approvals | Lock approved records after review |
 
-# Key Features
+<br>
 
-## Multi-source ESG Data Ingestion
+# Supported upload types
 
-Supports CSV uploads from:
+| Dataset | Examples |
+|:--|:--|
+| SAP Activity | Fuel usage, procurement activity |
+| Utility Electricity | Electricity consumption exports |
+| Travel Activity | Flight, train, taxi travel exports |
 
-- SAP activity exports
-- Utility electricity data
-- Corporate travel activity data
+<br>
 
----
+# Why I built it this way
 
-## Standardization Engine
+While researching ESG reporting workflows, one thing became obvious very quickly:
 
-Raw uploaded data is normalized into standardized ESG activity records.
+the difficult part usually isn’t the dashboard.
 
-Examples:
+It’s the operational data before the dashboard.
 
-| Raw Input | Standardized Output |
-|---|---|
-| 20 US_GAL petrol | 75.708 L |
-| 3 MWh electricity | 3000 kWh |
-| Travel entries | standardized km values |
+Different systems export:
+- inconsistent units
+- missing metadata
+- unusual naming conventions
+- suspicious operational values
 
----
+So instead of building a reporting UI first, I focused the prototype around:
+- ingestion traceability
+- normalization
+- suspicious row detection
+- analyst review
+- audit-style approval flow
 
-## Validation & Issue Detection
+<br>
 
-The system automatically detects:
+# How data moves through the system
 
-- Missing fields
-- Invalid numeric values
-- Unsupported units
-- Negative quantities
-- Outlier values
-- Missing vendor/facility information
-- Suspicious procurement values
-
----
-
-## Analyst Review Workflow
-
-Records are categorized into:
-
-| Status | Meaning |
-|---|---|
-| APPROVED | Clean records auto-approved |
-| FLAGGED | Suspicious records requiring analyst review |
-| FAILED | Invalid ingestion rows rejected before standardization |
-| REJECTED | Manually rejected by reviewer |
-
----
-
-## Failed Row Separation
-
-Invalid source rows are separated from reviewable activity records to simulate enterprise ingestion pipelines.
-
----
-
-## Auto-seeded Demo Data
-
-The project automatically seeds realistic demo datasets using:
-
-```bash
-python manage.py seed_demo
+```text
+Upload CSV
+   ↓
+Parse source rows
+   ↓
+Validate records
+   ↓
+Normalize units & quantities
+   ↓
+Detect suspicious values
+   ↓
+Move invalid rows to failed queue
+   ↓
+Send flagged rows for analyst review
+   ↓
+Approve / Reject
 ```
 
-This allows reviewers to immediately test the application without manually uploading files.
+<br>
 
----
+# Example standardization
 
-# Supported Upload Types
+| Raw Input | Standardized Output |
+|:--|:--|
+| 20 US_GAL petrol | 75.708 L |
+| 3 MWh electricity | 3000 kWh |
+| Travel exports | standardized km values |
 
-| Dataset Type | Description |
-|---|---|
-| SAP Activity | Fuel + procurement ESG activity data |
-| Utility Electricity | Scope 2 electricity consumption |
-| Travel Activity | Employee business travel data |
+<br>
 
----
+# Example ingestion issues detected
 
-# Workflow
+| Input Problem | What the system does |
+|:--|:--|
+| Missing facility name | Flags for analyst review |
+| Extremely large fuel quantity | Marks as suspicious |
+| Unsupported unit | Moves to failed rows |
+| Missing quantity | Rejects ingestion row |
+| Invalid numeric values | Prevents normalization |
 
-1. Upload ESG source CSV
-2. Parse source rows
-3. Validate records
-4. Normalize into standardized ESG activity records
-5. Flag suspicious/outlier values
-6. Review flagged records
-7. Approve/reject records
-8. Separate failed ingestion rows
+<br>
 
----
+# Dashboard workflow
 
-# Dashboard Metrics
+| Status | Meaning |
+|:--|:--|
+| APPROVED | Clean operational record |
+| FLAGGED | Requires analyst review |
+| FAILED | Invalid ingestion row |
+| REJECTED | Manually rejected by reviewer |
 
-| Metric | Meaning |
-|---|---|
-| Source Rows | Total uploaded raw rows |
-| Reviewable | Successfully standardized activity records |
-| Approved | Clean records auto-approved |
-| Flagged | Records requiring analyst review |
-| Failed | Invalid ingestion rows |
-
----
-
-# UI Design
-
-The frontend uses a clean bento-style operational dashboard layout inspired by enterprise review consoles.
-
-Design goals:
-- clean review workflow
-- low visual clutter
-- analyst-friendly layout
-- operational console feel
-- fast readability
-
----
+<br>
 
 # Screenshots
 
-## Overview Dashboard
+## Operational Overview
 
 ![Overview](./screenshots/overview.png)
 
----
+<br>
 
 ## Review Records
 
 ![Review Records](./screenshots/review-records.png)
 
----
+<br>
 
 ## Failed Rows
 
 ![Failed Rows](./screenshots/failed-rows.png)
 
----
+<br>
 
 ## Upload Workflow
 
 ![Upload Workflow](./screenshots/upload-workflow.png)
 
----
+<br>
 
-# Tech Stack
+# Stack
 
-## Frontend
+| Layer | Technology |
+|:--|:--|
+| Frontend | React + Vite |
+| Backend | Django + Django REST Framework |
+| Database | SQLite |
+| Deployment | Vercel + Render |
 
-- React
-- Vite
-- CSS
+<br>
 
-## Backend
+# Local setup
 
-- Django
-- Django REST Framework
-- SQLite
-
-## Deployment
-
-- Frontend hosted on Vercel
-- Backend hosted on Render
-
----
-
-# Local Setup
-
-## Clone Repository
+## Clone repository
 
 ```bash
 git clone https://github.com/kindey10/Breathe_Esg_review.git
+
 cd Breathe_Esg_review
 ```
 
----
+<br>
 
-# Backend Setup
+## Backend setup
 
 ```bash
 cd backend
@@ -228,15 +209,14 @@ python manage.py seed_demo
 python manage.py runserver
 ```
 
-Backend runs on:
-
-```txt
+Backend:
+```text
 http://127.0.0.1:8000
 ```
 
----
+<br>
 
-# Frontend Setup
+## Frontend setup
 
 ```bash
 cd frontend
@@ -246,76 +226,66 @@ npm install
 npm run dev
 ```
 
-Frontend runs on:
-
-```txt
+Frontend:
+```text
 http://localhost:5173
 ```
 
----
+<br>
 
-# Demo Credentials
+# Demo credentials
 
-```txt
+```text
 Username: kindey
 Password: Demo@12345
 ```
 
----
+<br>
 
-# Additional Documentation
+# Additional documentation
 
-Detailed design and architecture decisions are documented in:
+| File | Purpose |
+|:--|:--|
+| MODEL.md | Data modeling and architecture decisions |
+| DECISIONS.md | Ambiguities and implementation decisions |
+| TRADEOFFS.md | Intentional shortcuts and scope choices |
+| SOURCES.md | Research behind fabricated source data |
 
-- MODEL.md
-- DECISIONS.md
-- TRADEOFFS.md
-- SOURCES.md
+<br>
 
-These documents explain:
-- data modeling choices
-- ingestion assumptions
-- source research
-- validation strategy
-- intentional tradeoffs
-- scalability considerations
+# A few implementation notes
 
----
-
-# Notes
-
-- Demo datasets are automatically seeded during setup
-- Suspicious records are intentionally flagged for analyst review
-- Failed rows are separated from standardized reviewable records
-- Clean records are automatically approved
+- Demo datasets are auto-seeded
+- Suspicious records intentionally require review
+- Failed ingestion rows are separated from operational records
+- Clean records are auto-approved
 - Backend is hosted on Render free tier and may take ~30 seconds to wake on first request
 
----
+<br>
 
-# Device Support
+# Device support
 
 This project is currently optimized for:
-
 - laptops
 - desktop browsers
 
-The UI is not fully mobile responsive because the workflow is designed primarily as an enterprise review console.
+The UI is intentionally designed like an internal operational review console rather than a mobile-first consumer product.
 
----
+<br>
 
-# Future Improvements
+# What I would add next
 
-Possible future enhancements:
-
-- audit timeline UI
-- authentication screens
-- charts & ESG analytics
-- downloadable reports
-- advanced filtering/search
+If this evolved beyond the assignment prototype, I would likely add:
 - reviewer comments
-- cloud storage integration
+- audit timeline history
+- async ingestion workers
+- emissions calculation engine
+- PostgreSQL
+- bulk approval actions
+- object storage for uploaded files
+- advanced analytics
 
----
+<br>
 
 # Author
 
