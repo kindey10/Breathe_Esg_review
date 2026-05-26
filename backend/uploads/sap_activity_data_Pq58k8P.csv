@@ -1,0 +1,12 @@
+source_category,activity_type,quantity,unit,facility_name,activity_date,vendor_name,material_group
+FUEL,Diesel Fuel,500,L,Delhi Manufacturing Plant,2026-01-15,,FUEL
+FUEL,Petrol,20,US_GAL,Pune Assembly Facility,2026-01-16,,FUEL
+FUEL,Diesel Fuel,-50,L,Mumbai Plant,2026-01-18,,FUEL
+FUEL,Diesel Fuel,999999,L,Delhi Manufacturing Plant,2026-01-19,,FUEL
+FUEL,Diesel Fuel,300,UNKNOWN_UNIT,Delhi Manufacturing Plant,2026-01-20,,FUEL
+FUEL,Diesel Fuel,400,L,,2026-01-21,,FUEL
+PROCUREMENT,Steel Purchase,450000,INR,Bangalore Facility,2026-01-25,Tata Steel,RAW_MATERIAL
+PROCUREMENT,Chemical Purchase,120000,INR,Chennai Facility,2026-01-26,,CHEMICALS
+PROCUREMENT,Packaging Material,0,INR,Hyderabad Facility,2026-01-27,PackCorp,PACKAGING
+PROCUREMENT,Industrial Solvent,85000,INR,Pune Facility,,ChemSol,CHEMICALS
+PROCUREMENT,Steel Purchase,99999999,INR,Delhi Manufacturing Plant,2026-01-28,Tata Steel,RAW_MATERIAL

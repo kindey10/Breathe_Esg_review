@@ -18,6 +18,7 @@ from .parsers import (
     parse_travel_activity_batch,
 )
 
+
 def get_demo_membership(request):
 
     if request.user.is_authenticated:
@@ -160,47 +161,43 @@ class DashboardSummaryView(APIView):
 
         organization = membership.organization
 
-        total_batches = IngestionBatch.objects.filter(
+        activity_records = ActivityRecord.objects.filter(
             organization=organization
-        ).count()
-
-        pending_records = ActivityRecord.objects.filter(
-            organization=organization,
-            review_status="PENDING",
-        ).count()
-
-        flagged_records = ActivityRecord.objects.filter(
-            organization=organization,
-            review_status="FLAGGED",
-        ).count()
-
-        approved_records = ActivityRecord.objects.filter(
-            organization=organization,
-            review_status="APPROVED",
-            is_locked=True,
-        ).count()
-
-        rejected_records = ActivityRecord.objects.filter(
-            organization=organization,
-            review_status="REJECTED",
-        ).count()
+        )
 
         failed_rows = RawRecord.objects.filter(
             batch__organization=organization,
             parse_status="FAILED",
-        ).count()
-
-        total_issues = ValidationIssue.objects.filter(
-            raw_record__batch__organization=organization
-        ).count()
+        )
 
         return Response({
             "organization": organization.name,
-            "total_batches": total_batches,
-            "pending_records": pending_records,
-            "flagged_records": flagged_records,
-            "approved_locked_records": approved_records,
-            "rejected_records": rejected_records,
-            "failed_rows": failed_rows,
-            "total_issues": total_issues,
+
+            "total_batches": IngestionBatch.objects.filter(
+                organization=organization
+            ).count(),
+
+            "reviewable_records": activity_records.count(),
+
+            "approved_locked_records": activity_records.filter(
+    review_status="APPROVED",
+).count(),
+
+            "flagged_records": activity_records.filter(
+                review_status="FLAGGED",
+            ).count(),
+
+            "rejected_records": activity_records.filter(
+                review_status="REJECTED",
+            ).count(),
+
+            "failed_rows": failed_rows.count(),
+
+            "total_source_rows": RawRecord.objects.filter(
+                batch__organization=organization
+            ).count(),
+
+            "total_issues": ValidationIssue.objects.filter(
+                raw_record__batch__organization=organization
+            ).count(),
         })

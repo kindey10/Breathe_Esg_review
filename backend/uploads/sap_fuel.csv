@@ -1,6 +1,0 @@
-company_code,plant_code,document_number,posting_date,material_description,quantity,unit
-IN01,PLT-DEL-01,490000101,15.01.2026,Diesel Fuel,500,L
-IN01,PLT-PUN-01,490000102,16.01.2026,Petrol,20,US_GAL
-IN01,UNKNOWN-99,490000103,17.01.2026,Diesel Fuel,70,L
-IN01,PLT-DEL-01,490000104,18.01.2026,Diesel Fuel,-20,L
-IN01,PLT-DEL-01,490000105,19.01.2026,Petrol,15,

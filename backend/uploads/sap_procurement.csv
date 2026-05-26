@@ -1,5 +1,0 @@
-company_code,plant_code,purchase_order,posting_date,vendor_code,material_group,description,net_amount,currency
-IN01,PLT-DEL-01,450000201,2026-01-18,VND001,PACKAGING,Corrugated cartons,180000,INR
-IN01,PLT-DEL-01,450000202,2026-01-19,VND002,CHEMICALS,Cleaning solvent,72000,INR
-IN01,PLT-PUN-01,450000203,2026-01-20,VND003,,Unclassified supplies,50000,INR
-IN01,PLT-PUN-01,450000204,2026-01-21,VND004,OFFICE,Office chairs,100000,

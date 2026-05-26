@@ -1,0 +1,8 @@
+employee_id,travel_type,distance_km,facility_name,travel_date,class
+EMP-1001,Flight,1200,Delhi Manufacturing Plant,2026-02-10,Business
+EMP-1002,Train,450,Pune Assembly Facility,2026-02-11,Economy
+EMP-1003,Flight,-800,Mumbai Plant,2026-02-12,Business
+EMP-1004,Flight,99999,Delhi Manufacturing Plant,2026-02-13,First
+EMP-1005,Taxi,35,,2026-02-14,Standard
+EMP-1006,Flight,1500,Chennai Facility,,Economy
+EMP-1007,Flight,300,Hyderabad Facility,2026-02-15,UNKNOWN

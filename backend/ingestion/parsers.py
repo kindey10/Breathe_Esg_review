@@ -123,7 +123,7 @@ def parse_sap_fuel_batch(batch):
                 failed_rows += 1
                 continue
 
-            review_status = "FLAGGED" if has_warning else "PENDING"
+            review_status = "FLAGGED" if has_warning else "APPROVED"
 
             activity = ActivityRecord.objects.create(
                 organization=batch.organization,
@@ -260,7 +260,7 @@ def parse_sap_procurement_batch(batch):
                 failed_rows += 1
                 continue
 
-            review_status = "FLAGGED" if has_warning else "PENDING"
+            review_status = "FLAGGED" if has_warning else "APPROVED"
 
             activity = ActivityRecord.objects.create(
                 organization=batch.organization,
@@ -356,53 +356,46 @@ def parse_utility_electricity_batch(batch):
 
             issues = []
 
-            facility_code = (row.get("facility_code") or "").strip()
             meter_id = (row.get("meter_id") or "").strip()
-            start_date = parse_date(row.get("billing_period_start"))
-            end_date = parse_date(row.get("billing_period_end"))
-            usage_raw = (row.get("usage_value") or "").strip()
-            unit = (row.get("usage_unit") or "").strip()
-
-            facility = Facility.objects.filter(
-                organization=batch.organization,
-                facility_code=facility_code,
-            ).first()
-
-            if facility_code and facility is None:
-                issues.append(("WARNING", "UNKNOWN_FACILITY_CODE", "Facility code is not present in the lookup table."))
+            facility_name = (row.get("facility_name") or "").strip()
+            start_date = parse_date(row.get("billing_start"))
+            end_date = parse_date(row.get("billing_end"))
+            quantity_raw = (row.get("quantity") or "").strip()
+            unit = (row.get("unit") or "").strip()
 
             if not meter_id:
                 issues.append(("ERROR", "MISSING_METER_ID", "Meter ID is missing."))
 
+            if not facility_name:
+                issues.append(("WARNING", "MISSING_FACILITY", "Facility name is missing."))
+
             if not start_date or not end_date:
-                issues.append(("ERROR", "INVALID_BILLING_PERIOD", "Billing period dates are missing or invalid."))
-
-            if start_date and end_date and end_date < start_date:
-                issues.append(("ERROR", "INVALID_BILLING_PERIOD_ORDER", "Billing period end date is before start date."))
-
-            if not usage_raw:
-                issues.append(("ERROR", "MISSING_USAGE", "Electricity usage value is missing."))
+                issues.append(("ERROR", "MISSING_BILLING_PERIOD", "Billing period is missing or invalid."))
 
             try:
-                usage = float(usage_raw)
+                quantity = float(quantity_raw)
             except ValueError:
-                usage = None
-                issues.append(("ERROR", "INVALID_USAGE", "Electricity usage is not numeric."))
+                quantity = None
+                issues.append(("ERROR", "INVALID_ELECTRICITY_VALUE", "Electricity quantity is not numeric."))
 
-            if usage is not None and usage < 0:
-                issues.append(("WARNING", "NEGATIVE_ELECTRICITY_USAGE", "Electricity usage is negative and requires analyst review."))
+            if quantity is not None and quantity < 0:
+                issues.append(("ERROR", "NEGATIVE_ELECTRICITY", "Electricity usage cannot be negative."))
 
             normalized_quantity = None
             normalized_unit = None
 
-            if usage is not None and unit:
-                normalized_quantity, normalized_unit = normalize_electricity_unit(usage, unit)
+            if quantity is not None:
+                if unit.lower() == "kwh":
+                    normalized_quantity = quantity
+                    normalized_unit = "kWh"
+                elif unit.lower() == "mwh":
+                    normalized_quantity = quantity * 1000
+                    normalized_unit = "kWh"
+                else:
+                    issues.append(("ERROR", "UNSUPPORTED_ELECTRICITY_UNIT", "Electricity unit must be kWh or MWh."))
 
-                if normalized_unit is None:
-                    issues.append(("ERROR", "UNSUPPORTED_ELECTRICITY_UNIT", "Electricity unit is not supported."))
-
-            if not unit:
-                issues.append(("ERROR", "MISSING_UNIT", "Electricity unit is missing."))
+            if quantity is not None and quantity > 100000:
+                issues.append(("WARNING", "ELECTRICITY_OUTLIER", "Electricity usage is unusually high."))
 
             has_error = any(issue[0] == "ERROR" for issue in issues)
             has_warning = any(issue[0] == "WARNING" for issue in issues)
@@ -423,44 +416,29 @@ def parse_utility_electricity_batch(batch):
                 failed_rows += 1
                 continue
 
-            review_status = "FLAGGED" if has_warning else "PENDING"
+            review_status = "FLAGGED" if has_warning else "APPROVED"
 
             activity = ActivityRecord.objects.create(
                 organization=batch.organization,
                 batch=batch,
                 raw_record=raw_record,
-                facility=facility,
+                facility=None,
                 source_type="UTILITY",
                 dataset_type="UTILITY_ELECTRICITY",
                 scope="SCOPE_2",
-                activity_type="Purchased electricity",
+                activity_type="Electricity usage",
                 activity_date_start=start_date,
                 activity_date_end=end_date,
-                original_quantity=usage,
+                original_quantity=quantity,
                 original_unit=unit,
                 normalized_quantity=round(normalized_quantity, 3),
                 normalized_unit=normalized_unit,
                 review_status=review_status,
+                is_locked=False if has_warning else True,
                 source_details={
-                    "account_id": row.get("account_id"),
                     "meter_id": meter_id,
-                    "facility_code": facility_code,
-                    "tariff": row.get("tariff"),
-                    "billed_amount": row.get("billed_amount"),
-                    "currency": row.get("currency"),
-                },
-            )
-
-            AuditEvent.objects.create(
-                organization=batch.organization,
-                activity_record=activity,
-                actor=batch.uploaded_by,
-                action="CREATED",
-                note="Activity record created from utility electricity upload.",
-                after_state={
-                    "normalized_quantity": activity.normalized_quantity,
-                    "normalized_unit": activity.normalized_unit,
-                    "review_status": activity.review_status,
+                    "facility_name": facility_name,
+                    "standardized_as": "Electricity usage in kWh",
                 },
             )
 
@@ -487,6 +465,8 @@ def parse_utility_electricity_batch(batch):
     batch.total_rows = valid_rows + failed_rows + flagged_rows
     batch.status = "COMPLETED"
     batch.save()
+
+    return batch
 def parse_travel_batch(batch):
     valid_rows = 0
     failed_rows = 0
@@ -614,7 +594,7 @@ def parse_travel_batch(batch):
             failed_rows += 1
             continue
 
-        review_status = "FLAGGED" if has_warning else "PENDING"
+        review_status = "FLAGGED" if has_warning else "APPROVED"
 
         activity = ActivityRecord.objects.create(
             organization=batch.organization,
@@ -789,7 +769,7 @@ def parse_sap_activity_batch(batch):
                 failed_rows += 1
                 continue
 
-            review_status = "FLAGGED" if has_warning else "PENDING"
+            review_status = "FLAGGED" if has_warning else "APPROVED"
 
             activity = ActivityRecord.objects.create(
                 organization=batch.organization,
@@ -922,7 +902,7 @@ def parse_travel_activity_batch(batch):
                 failed_rows += 1
                 continue
 
-            review_status = "FLAGGED" if has_warning else "PENDING"
+            review_status = "FLAGGED" if has_warning else "APPROVED"
 
             activity = ActivityRecord.objects.create(
                 organization=batch.organization,
@@ -939,6 +919,7 @@ def parse_travel_activity_batch(batch):
                 normalized_quantity=distance,
                 normalized_unit="km",
                 review_status=review_status,
+                is_locked=False if has_warning else True,
                 source_details={
                     "employee_id": employee_id,
                     "facility_name": facility_name,
