@@ -75,9 +75,14 @@ class Command(BaseCommand):
             )
             source_objects[source_type] = source
 
-        project_root = Path(__file__).resolve().parents[5]
+
+        backend_dir = Path(__file__).resolve().parents[4]
+        project_root = backend_dir.parent
         sample_dir = project_root / "sample_data"
+        if not sample_dir.exists():
+            sample_dir = backend_dir / "sample_data"
         self.stdout.write(f"Looking for sample files in: {sample_dir}")
+
 
         demo_files = [
             (
