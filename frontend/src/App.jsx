@@ -3,6 +3,8 @@ import "./styles.css";
 
 const API = "http://127.0.0.1:8000/api";
 
+
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [active, setActive] = useState("dashboard");
@@ -158,17 +160,17 @@ function Dashboard({ summary, records }) {
       </section>
 
       <section className="grid stats">
-        <Stat title="Uploads" value={s.total_batches || 0} />
-        <Stat title="Pending" value={s.pending_records || 0} />
-        <Stat title="Flagged" value={s.flagged_records || 0} warn />
-        <Stat title="Locked" value={s.approved_locked_records || 0} good />
-        <Stat title="Failed" value={s.failed_rows || 0} bad />
-      </section>
+  <Stat title="Source Rows" value={s.total_source_rows || 0} />
+  <Stat title="Reviewable" value={s.reviewable_records || 0} />
+  <Stat title="Approved" value={s.approved_locked_records || 0} good />
+  <Stat title="Flagged" value={s.flagged_records || 0} warn />
+  <Stat title="Failed" value={s.failed_rows || 0} bad />
+</section>
 
       <section className="card">
         <div className="sectionHead">
           <h3>Latest records</h3>
-          <span>{records.length} records loaded</span>
+          <span>{records.length} reviewable records</span>
         </div>
         <RecordTable records={records.slice(0, 7)} />
       </section>
