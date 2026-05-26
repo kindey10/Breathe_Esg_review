@@ -76,7 +76,7 @@ class Command(BaseCommand):
             source_objects[source_type] = source
 
         project_root = Path(__file__).resolve().parents[5]
-        sample_dir = Path(r"C:\Users\kinde\OneDrive\Documents\Breathe_Esg_review\sample_data")
+        sample_dir = project_root / "sample_data"
         self.stdout.write(f"Looking for sample files in: {sample_dir}")
 
         demo_files = [
