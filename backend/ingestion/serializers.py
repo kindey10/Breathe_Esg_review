@@ -27,10 +27,9 @@ class IngestionBatchSerializer(serializers.ModelSerializer):
 class UploadBatchSerializer(serializers.Serializer):
     dataset_type = serializers.ChoiceField(
         choices=[
-            ("SAP_FUEL", "SAP Fuel"),
-            ("SAP_PROCUREMENT", "SAP Procurement"),
+            ("SAP_ACTIVITY", "SAP Activity Data"),
             ("UTILITY_ELECTRICITY", "Utility Electricity"),
-            ("TRAVEL", "Corporate Travel"),
+            ("TRAVEL_ACTIVITY", "Travel Activity"),
             ]
     )
     file = serializers.FileField()

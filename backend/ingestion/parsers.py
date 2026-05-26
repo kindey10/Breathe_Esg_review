@@ -4,7 +4,9 @@ from datetime import datetime
 
 from review.models import ActivityRecord, ValidationIssue, AuditEvent
 from ingestion.models import RawRecord, Facility
+import csv
 
+from django.utils.dateparse import parse_date
 
 def parse_date(value):
     if not value:
@@ -667,6 +669,308 @@ def parse_travel_batch(batch):
             flagged_rows += 1
         else:
             valid_rows += 1
+
+    batch.valid_rows = valid_rows
+    batch.failed_rows = failed_rows
+    batch.flagged_rows = flagged_rows
+    batch.total_rows = valid_rows + failed_rows + flagged_rows
+    batch.status = "COMPLETED"
+    batch.save()
+
+def parse_sap_activity_batch(batch):
+    valid_rows = 0
+    failed_rows = 0
+    flagged_rows = 0
+
+    file_path = batch.original_file.path
+
+    with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for index, row in enumerate(reader, start=2):
+            raw_record = RawRecord.objects.create(
+                batch=batch,
+                row_number=index,
+                raw_payload=row,
+                parse_status="VALID",
+            )
+
+            issues = []
+
+            source_category = (row.get("source_category") or "").strip().upper()
+            activity_type = (row.get("activity_type") or "").strip()
+            quantity_raw = (row.get("quantity") or "").strip()
+            unit = (row.get("unit") or "").strip()
+            facility_name = (row.get("facility_name") or "").strip()
+            activity_date = parse_date(row.get("activity_date"))
+            vendor_name = (row.get("vendor_name") or "").strip()
+            material_group = (row.get("material_group") or "").strip()
+
+            if not activity_date:
+                issues.append(("ERROR", "MISSING_OR_INVALID_DATE", "Activity date is missing or invalid."))
+
+            if not facility_name:
+                issues.append(("ERROR", "MISSING_FACILITY", "Facility name is missing."))
+
+            if not quantity_raw:
+                issues.append(("ERROR", "MISSING_QUANTITY", "Quantity or amount is missing."))
+
+            try:
+                quantity = float(quantity_raw)
+            except ValueError:
+                quantity = None
+                issues.append(("ERROR", "INVALID_QUANTITY", "Quantity is not numeric."))
+
+            if quantity is not None and quantity < 0:
+                issues.append(("ERROR", "NEGATIVE_VALUE", "Negative values cannot be approved without correction."))
+
+            if source_category == "FUEL":
+                scope = "SCOPE_1"
+
+                normalized_quantity = None
+                normalized_unit = None
+
+                if quantity is not None:
+                    normalized_quantity, normalized_unit = normalize_fuel_unit(quantity, unit)
+
+                    if normalized_unit == "GAL_AMBIGUOUS":
+                        issues.append(("WARNING", "AMBIGUOUS_GALLON_UNIT", "Gallon unit is ambiguous; expected US_GAL."))
+                        normalized_quantity = None
+                        normalized_unit = None
+
+                    if normalized_unit is None:
+                        issues.append(("ERROR", "UNSUPPORTED_FUEL_UNIT", "Fuel unit is not supported."))
+
+                    if quantity > 100000:
+                        issues.append(("WARNING", "FUEL_OUTLIER", "Fuel quantity is unusually high and needs review."))
+
+            elif source_category == "PROCUREMENT":
+                scope = "SCOPE_3"
+                normalized_quantity = quantity
+                normalized_unit = unit
+
+                if unit.upper() != "INR":
+                    issues.append(("ERROR", "UNSUPPORTED_CURRENCY", "Only INR procurement values are supported in this prototype."))
+
+                if not vendor_name:
+                    issues.append(("WARNING", "MISSING_VENDOR", "Vendor name is missing."))
+
+                if not material_group:
+                    issues.append(("WARNING", "MISSING_MATERIAL_GROUP", "Material group is missing."))
+
+                if quantity == 0:
+                    issues.append(("WARNING", "ZERO_PROCUREMENT_AMOUNT", "Procurement amount is zero."))
+
+                if quantity is not None and quantity > 10000000:
+                    issues.append(("WARNING", "PROCUREMENT_OUTLIER", "Procurement amount is unusually high."))
+
+            else:
+                scope = "UNKNOWN"
+                normalized_quantity = None
+                normalized_unit = None
+                issues.append(("ERROR", "UNKNOWN_SAP_CATEGORY", "SAP row must be FUEL or PROCUREMENT."))
+
+            has_error = any(issue[0] == "ERROR" for issue in issues)
+            has_warning = any(issue[0] == "WARNING" for issue in issues)
+
+            if has_error:
+                raw_record.parse_status = "FAILED"
+                raw_record.failure_reason = "; ".join([issue[2] for issue in issues if issue[0] == "ERROR"])
+                raw_record.save()
+
+                for severity, code, message in issues:
+                    ValidationIssue.objects.create(
+                        raw_record=raw_record,
+                        severity=severity,
+                        issue_code=code,
+                        message=message,
+                    )
+
+                failed_rows += 1
+                continue
+
+            review_status = "FLAGGED" if has_warning else "PENDING"
+
+            activity = ActivityRecord.objects.create(
+                organization=batch.organization,
+                batch=batch,
+                raw_record=raw_record,
+                facility=None,
+                source_type="SAP",
+                dataset_type="SAP_ACTIVITY",
+                scope=scope,
+                activity_type=activity_type or source_category,
+                activity_date_start=activity_date,
+                original_quantity=quantity,
+                original_unit=unit,
+                normalized_quantity=round(normalized_quantity, 3) if normalized_quantity is not None else None,
+                normalized_unit=normalized_unit,
+                review_status=review_status,
+                source_details={
+                    "source_category": source_category,
+                    "facility_name": facility_name,
+                    "vendor_name": vendor_name,
+                    "material_group": material_group,
+                    "standardized_as": "Fuel in litres" if source_category == "FUEL" else "Procurement spend in INR",
+                },
+            )
+
+            AuditEvent.objects.create(
+                organization=batch.organization,
+                activity_record=activity,
+                actor=batch.uploaded_by,
+                action="CREATED",
+                note="Standardized SAP activity record created.",
+                after_state={
+                    "raw_value": f"{quantity} {unit}",
+                    "standard_value": f"{activity.normalized_quantity} {activity.normalized_unit}",
+                    "review_status": activity.review_status,
+                },
+            )
+
+            for severity, code, message in issues:
+                ValidationIssue.objects.create(
+                    raw_record=raw_record,
+                    activity_record=activity,
+                    severity=severity,
+                    issue_code=code,
+                    message=message,
+                )
+
+            raw_record.parse_status = "FLAGGED" if has_warning else "VALID"
+            raw_record.save()
+
+            if has_warning:
+                flagged_rows += 1
+            else:
+                valid_rows += 1
+
+    batch.valid_rows = valid_rows
+    batch.failed_rows = failed_rows
+    batch.flagged_rows = flagged_rows
+    batch.total_rows = valid_rows + failed_rows + flagged_rows
+    batch.status = "COMPLETED"
+    batch.save()
+
+    return batch
+
+
+def parse_travel_activity_batch(batch):
+    valid_rows = 0
+    failed_rows = 0
+    flagged_rows = 0
+
+    file_path = batch.original_file.path
+
+    with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for index, row in enumerate(reader, start=2):
+            raw_record = RawRecord.objects.create(
+                batch=batch,
+                row_number=index,
+                raw_payload=row,
+                parse_status="VALID",
+            )
+
+            issues = []
+
+            employee_id = (row.get("employee_id") or "").strip()
+            travel_type = (row.get("travel_type") or "").strip()
+            distance_raw = (row.get("distance_km") or "").strip()
+            facility_name = (row.get("facility_name") or "").strip()
+            travel_date = parse_date(row.get("travel_date"))
+            travel_class = (row.get("class") or "").strip()
+
+            if not travel_date:
+                issues.append(("ERROR", "MISSING_TRAVEL_DATE", "Travel date is missing or invalid."))
+
+            if not facility_name:
+                issues.append(("WARNING", "MISSING_FACILITY", "Facility name is missing."))
+
+            try:
+                distance = float(distance_raw)
+            except ValueError:
+                distance = None
+                issues.append(("ERROR", "INVALID_DISTANCE", "Distance is not numeric."))
+
+            if distance is not None and distance < 0:
+                issues.append(("ERROR", "NEGATIVE_DISTANCE", "Travel distance cannot be negative."))
+
+            if distance is not None and distance > 10000:
+                issues.append(("WARNING", "TRAVEL_DISTANCE_OUTLIER", "Travel distance is unusually high."))
+
+            if travel_class.upper() in ["UNKNOWN", ""]:
+                issues.append(("WARNING", "UNKNOWN_TRAVEL_CLASS", "Travel class is missing or unknown."))
+
+            has_error = any(issue[0] == "ERROR" for issue in issues)
+            has_warning = any(issue[0] == "WARNING" for issue in issues)
+
+            if has_error:
+                raw_record.parse_status = "FAILED"
+                raw_record.failure_reason = "; ".join([issue[2] for issue in issues if issue[0] == "ERROR"])
+                raw_record.save()
+
+                for severity, code, message in issues:
+                    ValidationIssue.objects.create(
+                        raw_record=raw_record,
+                        severity=severity,
+                        issue_code=code,
+                        message=message,
+                    )
+
+                failed_rows += 1
+                continue
+
+            review_status = "FLAGGED" if has_warning else "PENDING"
+
+            activity = ActivityRecord.objects.create(
+                organization=batch.organization,
+                batch=batch,
+                raw_record=raw_record,
+                facility=None,
+                source_type="TRAVEL",
+                dataset_type="TRAVEL_ACTIVITY",
+                scope="SCOPE_3",
+                activity_type=f"{travel_type} travel",
+                activity_date_start=travel_date,
+                original_quantity=distance,
+                original_unit="km",
+                normalized_quantity=distance,
+                normalized_unit="km",
+                review_status=review_status,
+                source_details={
+                    "employee_id": employee_id,
+                    "facility_name": facility_name,
+                    "travel_class": travel_class,
+                    "standardized_as": "Business travel distance in km",
+                },
+            )
+
+            AuditEvent.objects.create(
+                organization=batch.organization,
+                activity_record=activity,
+                actor=batch.uploaded_by,
+                action="CREATED",
+                note="Standardized travel activity record created.",
+            )
+
+            for severity, code, message in issues:
+                ValidationIssue.objects.create(
+                    raw_record=raw_record,
+                    activity_record=activity,
+                    severity=severity,
+                    issue_code=code,
+                    message=message,
+                )
+
+            raw_record.parse_status = "FLAGGED" if has_warning else "VALID"
+            raw_record.save()
+
+            if has_warning:
+                flagged_rows += 1
+            else:
+                valid_rows += 1
 
     batch.valid_rows = valid_rows
     batch.failed_rows = failed_rows

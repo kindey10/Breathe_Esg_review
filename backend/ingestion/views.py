@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from django.contrib.auth.models import User
 from accounts.models import Membership
 from .models import DataSource, IngestionBatch, RawRecord
 from review.models import ActivityRecord, ValidationIssue
@@ -12,12 +13,25 @@ from .serializers import (
     RawRecordSerializer,
 )
 from .parsers import (
-    parse_sap_fuel_batch,
-    parse_sap_procurement_batch,
+    parse_sap_activity_batch,
     parse_utility_electricity_batch,
-    parse_travel_batch,
+    parse_travel_activity_batch,
 )
 
+def get_demo_membership(request):
+
+    if request.user.is_authenticated:
+        membership = Membership.objects.filter(user=request.user).first()
+
+        if membership:
+            return membership
+
+    demo_user = User.objects.filter(username="kindey").first()
+
+    if demo_user:
+        return Membership.objects.filter(user=demo_user).first()
+
+    return None
 
 class UploadBatchView(APIView):
     def post(self, request):
@@ -26,7 +40,7 @@ class UploadBatchView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        membership = Membership.objects.filter(user=request.user).first()
+        membership = get_demo_membership(request)
 
         if not membership:
             return Response(
@@ -37,11 +51,11 @@ class UploadBatchView(APIView):
         dataset_type = serializer.validated_data["dataset_type"]
         uploaded_file = serializer.validated_data["file"]
 
-        if dataset_type in ["SAP_FUEL", "SAP_PROCUREMENT"]:
+        if dataset_type == "SAP_ACTIVITY":
             source_type = "SAP"
         elif dataset_type == "UTILITY_ELECTRICITY":
-            source_type = "UTILITY"    
-        elif dataset_type == "TRAVEL":
+            source_type = "UTILITY"
+        elif dataset_type == "TRAVEL_ACTIVITY":
             source_type = "TRAVEL"
         else:
             return Response(
@@ -66,18 +80,16 @@ class UploadBatchView(APIView):
             dataset_type=dataset_type,
             original_file=uploaded_file,
             original_filename=uploaded_file.name,
-            uploaded_by=request.user,
+            uploaded_by=request.user if request.user.is_authenticated else User.objects.filter(username="kindey").first(),
             status="PROCESSING",
         )
 
-        if dataset_type == "SAP_FUEL":
-            parse_sap_fuel_batch(batch)
-        if dataset_type == "SAP_PROCUREMENT":
-            parse_sap_procurement_batch(batch)
+        if dataset_type == "SAP_ACTIVITY":
+            parse_sap_activity_batch(batch)
         if dataset_type == "UTILITY_ELECTRICITY":
             parse_utility_electricity_batch(batch)
-        if dataset_type == "TRAVEL":
-            parse_travel_batch(batch)
+        if dataset_type == "TRAVEL_ACTIVITY":
+            parse_travel_activity_batch(batch)
 
         response_data = IngestionBatchSerializer(batch).data
         return Response(response_data, status=status.HTTP_201_CREATED)
@@ -85,7 +97,7 @@ class UploadBatchView(APIView):
 
 class BatchListView(APIView):
     def get(self, request):
-        membership = Membership.objects.filter(user=request.user).first()
+        membership = get_demo_membership(request)
 
         if not membership:
             return Response([], status=status.HTTP_200_OK)
@@ -100,7 +112,7 @@ class BatchListView(APIView):
 
 class ActivityRecordListView(APIView):
     def get(self, request):
-        membership = Membership.objects.filter(user=request.user).first()
+        membership = get_demo_membership(request)
 
         if not membership:
             return Response([], status=status.HTTP_200_OK)
@@ -124,7 +136,7 @@ class ActivityRecordListView(APIView):
 
 class FailedRawRecordListView(APIView):
     def get(self, request):
-        membership = Membership.objects.filter(user=request.user).first()
+        membership = get_demo_membership(request)
 
         if not membership:
             return Response([], status=status.HTTP_200_OK)
@@ -138,7 +150,7 @@ class FailedRawRecordListView(APIView):
         return Response(serializer.data)
 class DashboardSummaryView(APIView):
     def get(self, request):
-        membership = Membership.objects.filter(user=request.user).first()
+        membership = get_demo_membership(request)
 
         if not membership:
             return Response(

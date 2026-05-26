@@ -1,0 +1,8 @@
+meter_id,facility_name,billing_start,billing_end,quantity,unit
+MTR-1001,Delhi Manufacturing Plant,2026-01-01,2026-01-31,12500,kWh
+MTR-1002,Pune Assembly Facility,2026-01-01,2026-01-31,15,MWh
+MTR-1003,Mumbai Plant,2026-01-01,2026-01-31,-400,kWh
+MTR-1004,Chennai Facility,2026-01-01,2026-01-31,999999,kWh
+MTR-1005,,2026-01-01,2026-01-31,3000,kWh
+MTR-1006,Bangalore Facility,2026-01-01,,4500,kWh
+MTR-1007,Hyderabad Facility,2026-01-01,2026-01-31,200,INVALID_UNIT
