@@ -133,6 +133,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://breathe-esg-review-6gh7.onrender.com",
+    "https://breathe-esg-review.vercel.app",
 ]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -145,6 +146,7 @@ REST_FRAMEWORK = {
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "https://breathe-esg-review-6gh7.onrender.com",
+    "https://breathe-esg-review.vercel.app",
 ]
 
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -154,9 +156,11 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://breathe-esg-review-6gh7.onrender.com",
+    "https://breathe-esg-review.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "https://breathe-esg-review-6gh7.onrender.com",
+    "https://breathe-esg-review.vercel.app",
 ]
