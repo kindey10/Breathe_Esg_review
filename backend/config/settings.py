@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-ujn%bn0a_b6%9#o9t$yy)$@21-cggzrco5)8u83%!3+8%doxo3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "breathe-esg-review-6gh7.onrender.com",
+]
 
 
 # Application definition
@@ -128,6 +132,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "https://breathe-esg-review-6gh7.onrender.com",
 ]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -139,6 +144,7 @@ REST_FRAMEWORK = {
 }
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    "https://breathe-esg-review-6gh7.onrender.com",
 ]
 
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -147,8 +153,10 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "https://breathe-esg-review-6gh7.onrender.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    "https://breathe-esg-review-6gh7.onrender.com",
 ]
